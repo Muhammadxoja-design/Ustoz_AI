@@ -14,7 +14,7 @@ const upload = multer({
 // Admin Auth Middleware — uses ADMIN_SECRET_TOKEN from .env
 // Frontend must send: Authorization: Bearer <token>
 // =============================================================================
-const ADMIN_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'ustoz-admin-2026';
+const ADMIN_TOKEN = process.env.ADMIN_SECRET_TOKEN || 'brainstorm-admin-2026';
 
 function requireAdminAuth(req: any, res: any, next: any) {
   const authHeader = req.headers.authorization;
@@ -217,7 +217,7 @@ router.get('/export', async (_req, res) => {
     const csvContent = [header.join(','), ...rows].join('\n');
 
     res.header('Content-Type', 'text/csv');
-    res.attachment('Ustoz_AI_Database_Export.csv');
+    res.attachment('BrainStorm_AI_Database_Export.csv');
     res.send(csvContent);
 
   } catch (error) {

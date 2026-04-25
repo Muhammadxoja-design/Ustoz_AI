@@ -172,7 +172,7 @@ bot.hears("🚀 Launch App", async (ctx) => {
   
   if (webAppUrl.startsWith('https://')) {
     const launchKeyboard = new InlineKeyboard().webApp("Launch Test 🚀", webAppUrl);
-    await ctx.reply("Click the button below to enter the Ustoz AI terminal:", {
+    await ctx.reply("Click the button below to enter the BrainStorm AI terminal:", {
       reply_markup: launchKeyboard
     });
   } else {

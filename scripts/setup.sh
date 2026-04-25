@@ -8,7 +8,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${BLUE}====================================================${NC}"
-echo -e "${BLUE}   Ustoz AI: Automated Production Deployment v1.0   ${NC}"
+echo -e "${BLUE}   BrainStorm AI: Automated Production Deployment v1.0   ${NC}"
 echo -e "${BLUE}====================================================${NC}"
 
 # 1. Interactive Setup
@@ -52,12 +52,12 @@ cat <<EOF > .env
 # Backend & Bot Config
 BOT_TOKEN=$BOT_TOKEN
 ADMIN_TELEGRAM_IDS=1234567,8901234
-WEBAPP_URL=https://ustoz.yourdomain.com
+WEBAPP_URL=https://brainstorm.yourdomain.com
 
 # Database (PostgreSQL)
-POSTGRES_USER=ustoz_admin
+POSTGRES_USER=brainstorm_admin
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
-POSTGRES_DB=ustoz_db
+POSTGRES_DB=brainstorm_db
 
 # In-Memory Session Storage (Redis)
 REDIS_PASSWORD=$(openssl rand -base64 24)
@@ -70,7 +70,7 @@ EOF
 chmod 600 .env
 
 # 5. Execution
-echo -e "${GREEN}[5/7] Building & Launching Ustoz AI Infrastructure...${NC}"
+echo -e "${GREEN}[5/7] Building & Launching BrainStorm AI Infrastructure...${NC}"
 docker compose up -d --build
 
 # 6. Automated Migration
@@ -78,9 +78,9 @@ echo -e "${GREEN}[6/7] Waiting for PostgreSQL to initialize (15s)...${NC}"
 sleep 15
 
 echo -e "${GREEN}[7/7] Synchronizing Prisma Database Schema...${NC}"
-docker exec -i ustoz_app npx prisma migrate deploy
+docker exec -i brainstorm_app npx prisma migrate deploy
 
 echo -e "\n${BLUE}====================================================${NC}"
-echo -e "${GREEN}   DEPLOYMENT COMPLETE: Ustoz AI is now ONLINE!     ${NC}"
+echo -e "${GREEN}   DEPLOYMENT COMPLETE: BrainStorm AI is now ONLINE!     ${NC}"
 echo -e "${BLUE}====================================================${NC}"
 echo -e "Live Logs: docker compose logs -f app"

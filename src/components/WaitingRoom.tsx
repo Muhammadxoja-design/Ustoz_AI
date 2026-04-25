@@ -101,7 +101,7 @@ export default function WaitingRoom({ startTime, testTitle, testSubject, onStart
 
       <div className="pb-10 flex justify-center relative z-10">
         <p className="text-[10px] font-black uppercase tracking-[0.4em] text-slate-700 italic">
-          Ustoz AI • Control Shell v4.0
+          BrainStorm AI • Control Shell v4.0
         </p>
       </div>
     </div>

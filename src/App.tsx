@@ -20,7 +20,7 @@ interface ActiveTestInfo {
 }
 
 export default function App() {
-  const { webApp, gender, colorScheme } = useTelegram();
+  const { webApp, gender, colorScheme, isTelegram } = useTelegram();
   const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
   const [testInfo, setTestInfo] = useState<ActiveTestInfo | null>(null);
   const [isTestLive, setIsTestLive] = useState(false);
@@ -37,10 +37,10 @@ export default function App() {
       return;
     }
 
-    const initData = window.Telegram?.WebApp?.initData;
-
     const checkAuthAndTest = async () => {
       try {
+        const initData = webApp?.initData || window.Telegram?.WebApp?.initData;
+
         // 1. Check Registration
         if (initData) {
           const authRes = await fetch('/api/v1/quiz/me', {
@@ -53,8 +53,7 @@ export default function App() {
             setIsRegistered(false);
           }
         } else {
-          // If no initData, we might be in a browser or admin testing
-          // Let's assume unregistered for safety if not admin
+          // If no initData, we are definitely not in a proper WebApp context
           setIsRegistered(false);
         }
 
@@ -65,8 +64,6 @@ export default function App() {
 
         if (data.status === 'active') {
           setIsTestLive(true);
-        } else if (data.status === 'upcoming') {
-          setIsTestLive(false);
         } else {
           setIsTestLive(false);
         }
@@ -77,8 +74,15 @@ export default function App() {
       }
     };
 
-    checkAuthAndTest();
-  }, [isAdminRoute]);
+    // We wait a bit for Telegram to initialize if we suspect we are in it
+    if (window.Telegram?.WebApp) {
+      checkAuthAndTest();
+    } else {
+      // Small timeout to allow script to load if it's lagging
+      const timeout = setTimeout(checkAuthAndTest, 500);
+      return () => clearTimeout(timeout);
+    }
+  }, [isAdminRoute, webApp]);
 
   // Dynamic Theming Effect
   useEffect(() => {
@@ -157,6 +161,26 @@ export default function App() {
                 </div>
              </motion.div>
           </div>
+        ) : !isTelegram ? (
+          <div className="h-screen flex flex-col items-center justify-center p-6">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="glass-card p-12 max-w-sm w-full text-center border-indigo-500/20 shadow-indigo-500/10"
+            >
+              <div className="w-20 h-20 glass mx-auto mb-8 rounded-[2rem] flex items-center justify-center text-4xl border-indigo-500/30 text-indigo-500 shadow-2xl">🌐</div>
+              <h2 className="hero-text text-3xl mb-4 italic">Web Access Restricted</h2>
+              <p className="text-slate-400 text-xs font-medium leading-relaxed mb-10">
+                This terminal is only accessible via the official BrainStorm AI Telegram WebApp for security reasons.
+              </p>
+              <a 
+                href="https://t.me/BrainStormUzBot"
+                className="btn-premium w-full py-5 text-sm font-black uppercase tracking-widest bg-indigo-600 shadow-indigo-600/40"
+              >
+                Open in Telegram 🛰️
+              </a>
+            </motion.div>
+          </div>
         ) : isRegistered === false ? (
           <div className="h-screen flex flex-col items-center justify-center p-6">
             <motion.div 
@@ -165,15 +189,15 @@ export default function App() {
               className="glass-card p-12 max-w-sm w-full text-center border-rose-500/20 shadow-rose-500/10"
             >
               <div className="w-20 h-20 glass mx-auto mb-8 rounded-[2rem] flex items-center justify-center text-4xl border-rose-500/30 text-rose-500 shadow-2xl">🚫</div>
-              <h2 className="hero-text text-3xl mb-4 italic text-rose-500">Access Denied</h2>
+              <h2 className="hero-text text-3xl mb-4 italic text-rose-500">Not Registered</h2>
               <p className="text-slate-400 text-xs font-medium leading-relaxed mb-10">
-                Your biological signature is not registered in our database. You must initialize your profile via the Telegram Bot first.
+                Your Telegram account is not found in our database. Please register using the bot first.
               </p>
               <a 
-                href="https://t.me/UstozAIBot"
+                href="https://t.me/BrainStormUzBot"
                 className="btn-premium w-full py-5 text-sm font-black uppercase tracking-widest bg-rose-600 shadow-rose-600/40"
               >
-                Return to Bot 🛰️
+                Register via Bot 🛰️
               </a>
             </motion.div>
           </div>

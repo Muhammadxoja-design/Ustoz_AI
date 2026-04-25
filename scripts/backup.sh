@@ -10,16 +10,16 @@ set -u
 set -o pipefail
 
 # --- Configuration Variables ---
-DB_CONTAINER_NAME="ustoz_postgres"
-DB_USER="ustoz_admin"
-DB_NAME="ustoz_db"
+DB_CONTAINER_NAME="brainstorm_postgres"
+DB_USER="brainstorm_admin"
+DB_NAME="brainstorm_db"
 
 # Destination path on the VPS host system
-BACKUP_DIR="/var/backups/ustoz_db_backups"
+BACKUP_DIR="/var/backups/brainstorm_db_backups"
 
 # Formatted timestamp for secure versioning (e.g., 20260501_030000)
 TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
-BACKUP_FILE="${BACKUP_DIR}/ustoz_backup_${TIMESTAMP}.sql.gz"
+BACKUP_FILE="${BACKUP_DIR}/brainstorm_backup_${TIMESTAMP}.sql.gz"
 
 # ------------------------------------------------------------------------------
 # 1. Directory Initialization & Security
@@ -54,7 +54,7 @@ fi
 # ------------------------------------------------------------------------------
 # Automatically delete backup archives older than 7 days
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Executing retention policy cleanup..."
-find "$BACKUP_DIR" -type f -name "ustoz_backup_*.sql.gz" -mtime +7 -delete
+find "$BACKUP_DIR" -type f -name "brainstorm_backup_*.sql.gz" -mtime +7 -delete
 
 echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process complete."
 
@@ -63,4 +63,4 @@ echo "[$(date +"%Y-%m-%d %H:%M:%S")] Process complete."
 # ==============================================================================
 # Run: sudo crontab -e
 # Add the following line to the bottom:
-# 0 3 * * * /bin/bash /path/to/project/scripts/backup.sh >> /var/log/ustoz_backup.log 2>&1
+# 0 3 * * * /bin/bash /path/to/project/scripts/backup.sh >> /var/log/brainstorm_backup.log 2>&1

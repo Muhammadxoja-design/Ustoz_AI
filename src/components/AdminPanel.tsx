@@ -110,7 +110,7 @@ export default function AdminPanel() {
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url; a.download = 'Ustoz_AI_Database_Export.csv';
+      a.href = url; a.download = 'BrainStorm_AI_Database_Export.csv';
       document.body.appendChild(a); a.click();
       document.body.removeChild(a); window.URL.revokeObjectURL(url);
     } catch { alert('Export failed'); }

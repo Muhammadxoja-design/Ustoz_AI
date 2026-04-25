@@ -54,5 +54,6 @@ export function useTelegram() {
     colorScheme,
     gender,
     close,
+    isTelegram: !!window.Telegram?.WebApp?.initData,
   };
 }
