@@ -47,11 +47,17 @@ RUN npx prisma generate
 # Copy the built Frontend static files (Assuming Vite outputs to /dist)
 COPY --from=builder /app/dist ./dist
 
-# Copy the compiled Backend TypeScript files (Assuming tsc outputs to /build)
-COPY --from=builder /app/build ./build
+# Copy the Backend source code (tsx will run this directly)
+COPY server ./server
+COPY src ./src
+COPY public ./public
+
+# Create uploads directory
+RUN mkdir -p server/uploads
 
 # Expose internal port (Nginx will proxy external traffic to this)
 EXPOSE 3000
 
 # Start the Node.js application securely
-CMD ["npm", "start"]
+# Run migrations and start the Node.js application securely
+CMD npx prisma migrate deploy && npm start
