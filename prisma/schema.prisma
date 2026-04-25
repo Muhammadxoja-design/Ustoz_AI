@@ -1,0 +1,126 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Gender {
+  MALE
+  FEMALE
+}
+
+enum UserStatus {
+  ACTIVE
+  FROZEN
+  BANNED
+}
+
+enum AuditLogType {
+  TAB_SWITCH
+  FAST_ANSWER
+  SUSPICIOUS_IP
+  ADMIN_ACTION
+}
+
+model User {
+  id          String     @id @default(uuid()) @db.Uuid
+  telegramId  BigInt     @unique
+  fullName    String
+  phone       String
+  age         Int
+  gender      Gender
+  
+  // Demographics
+  region      String
+  district    String
+  mfy         String
+  street      String
+  house       String
+
+  // Security & State
+  status      UserStatus @default(ACTIVE)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  // Relations
+  results     Result[]
+  auditLogs   AuditLog[]
+
+  // Regional leaderboards / lookups
+  @@index([region, district])
+}
+
+model Test {
+  id          String     @id @default(uuid()) @db.Uuid
+  title       String
+  subject     String
+  description String?    @db.Text
+  startDate   DateTime
+  endDate     DateTime
+  timeLimitMs Int        // Storing as milliseconds for precision
+
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  questions   Question[]
+  results     Result[]
+
+  // Index for querying active tests based on time constraints
+  @@index([startDate, endDate])
+}
+
+model Question {
+  id            String   @id @default(uuid()) @db.Uuid
+  testId        String   @db.Uuid
+  content       String   @db.Text
+  options       Json     // Array of standard { id: string, text: string } objects
+  correctOption String   // Option ID
+  points        Int      @default(1)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // Querying questions by their test
+  @@index([testId])
+}
+
+model Result {
+  id          String   @id @default(uuid()) @db.Uuid
+  userId      String   @db.Uuid
+  testId      String   @db.Uuid
+  
+  score       Int      @default(0)
+  timeSpentMs Int      // Time spent in milliseconds for high-resolution tie-breaking
+  penaltyPts  Int      @default(0)
+  
+  completedAt DateTime @default(now())
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  test        Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+
+  // CRITICAL: Composite index for ultra-fast leaderboard fetching
+  // B-Tree will sort results by Test ID first, then Score (DESC), then Time (ASC)
+  @@index([testId, score(sort: Desc), timeSpentMs(sort: Asc)])
+  @@unique([userId, testId]) // Prevents multi-submissions
+}
+
+model AuditLog {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @db.Uuid
+  type        AuditLogType
+  description String       @db.Text
+  metadata    Json?        // Additional tracking data (e.g., {"browser": "...", "tabSwitchedAt": 1690000000})
+  
+  createdAt   DateTime     @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // For quick user timeline generation and threat detection
+  @@index([userId, createdAt(sort: Desc)])
+  @@index([type])
+}
