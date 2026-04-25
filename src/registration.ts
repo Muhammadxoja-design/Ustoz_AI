@@ -20,16 +20,11 @@ export async function registrationFlow(conversation: MyConversation, ctx: MyCont
   );
 
   if (existingUser) {
-    let webAppUrl = `${process.env.WEBAPP_URL}?gender=${existingUser.gender.toLowerCase()}`;
-    
-    // Telegram WebApp buttons REQUIRE HTTPS.
-    if (!webAppUrl.startsWith('https://')) {
     await ctx.reply("✅ You are already registered! Use the menu below to explore.", {
       reply_markup: mainMenuKeyboard,
     });
     return;
   }
-}
 
   // 1. Full Name
   await ctx.reply("Welcome! 🎓 Let's get you registered.\n\nPlease enter your *Full Name*:", {

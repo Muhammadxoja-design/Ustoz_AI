@@ -22,6 +22,7 @@ interface ActiveTestInfo {
 export default function App() {
   const { webApp, gender, colorScheme, isTelegram } = useTelegram();
   const [isRegistered, setIsRegistered] = useState<boolean | null>(null);
+  const [authError, setAuthError] = useState<string | null>(null);
   const [testInfo, setTestInfo] = useState<ActiveTestInfo | null>(null);
   const [isTestLive, setIsTestLive] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -49,8 +50,14 @@ export default function App() {
           if (authRes.ok) {
             const authData = await authRes.json();
             setIsRegistered(authData.registered);
+            setAuthError(null);
           } else {
             setIsRegistered(false);
+            if (authRes.status === 401) {
+              setAuthError('AUTHORIZATION_FAILED');
+            } else {
+              setAuthError('SERVER_ERROR');
+            }
           }
         } else {
           // If no initData, we are definitely not in a proper WebApp context
@@ -188,16 +195,22 @@ export default function App() {
               animate={{ opacity: 1, scale: 1 }}
               className="glass-card p-12 max-w-sm w-full text-center border-rose-500/20 shadow-rose-500/10"
             >
-              <div className="w-20 h-20 glass mx-auto mb-8 rounded-[2rem] flex items-center justify-center text-4xl border-rose-500/30 text-rose-500 shadow-2xl">🚫</div>
-              <h2 className="hero-text text-3xl mb-4 italic text-rose-500">Not Registered</h2>
+              <div className="w-20 h-20 glass mx-auto mb-8 rounded-[2rem] flex items-center justify-center text-4xl border-rose-500/30 text-rose-500 shadow-2xl">
+                {authError === 'AUTHORIZATION_FAILED' ? '🔑' : '🚫'}
+              </div>
+              <h2 className="hero-text text-3xl mb-4 italic text-rose-500">
+                {authError === 'AUTHORIZATION_FAILED' ? 'Auth Failed' : 'Not Registered'}
+              </h2>
               <p className="text-slate-400 text-xs font-medium leading-relaxed mb-10">
-                Your Telegram account is not found in our database. Please register using the bot first.
+                {authError === 'AUTHORIZATION_FAILED' 
+                  ? 'The backend could not verify your Telegram session. Please ensure your BOT_TOKEN in .env is correct and restart the server.'
+                  : 'Your Telegram account is not found in our database. Please register using the bot first.'}
               </p>
               <a 
                 href="https://t.me/BrainStormUzBot"
                 className="btn-premium w-full py-5 text-sm font-black uppercase tracking-widest bg-rose-600 shadow-rose-600/40"
               >
-                Register via Bot 🛰️
+                {authError === 'AUTHORIZATION_FAILED' ? 'Try Again 🛰️' : 'Register via Bot 🛰️'}
               </a>
             </motion.div>
           </div>
