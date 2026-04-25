@@ -1,4 +1,8 @@
 import 'dotenv/config';
+// Handle BigInt serialization globally for JSON.stringify
+(BigInt.prototype as any).toJSON = function () {
+  return this.toString();
+};
 import express from 'express';
 import path from 'path';
 import cors from 'cors';

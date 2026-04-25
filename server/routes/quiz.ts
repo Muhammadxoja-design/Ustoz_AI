@@ -75,7 +75,13 @@ router.get('/me', async (req, res) => {
       return res.json({ registered: false });
     }
 
-    res.json({ registered: true, user });
+    // Convert BigInt to string for JSON serialization
+    const serializedUser = {
+      ...user,
+      telegramId: user.telegramId.toString(),
+    };
+
+    res.json({ registered: true, user: serializedUser });
   } catch (error) {
     console.error("Auth check error:", error);
     res.status(500).json({ message: 'Server error' });

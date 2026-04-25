@@ -76,6 +76,7 @@ export default function App() {
         }
       } catch (error) {
         console.error('Initialization failed:', error);
+        setAuthError('SERVER_ERROR');
       } finally {
         setIsLoading(false);
       }
@@ -196,21 +197,23 @@ export default function App() {
               className="glass-card p-12 max-w-sm w-full text-center border-rose-500/20 shadow-rose-500/10"
             >
               <div className="w-20 h-20 glass mx-auto mb-8 rounded-[2rem] flex items-center justify-center text-4xl border-rose-500/30 text-rose-500 shadow-2xl">
-                {authError === 'AUTHORIZATION_FAILED' ? '🔑' : '🚫'}
+                {authError === 'AUTHORIZATION_FAILED' ? '🔑' : authError === 'SERVER_ERROR' ? '⚠️' : '🚫'}
               </div>
               <h2 className="hero-text text-3xl mb-4 italic text-rose-500">
-                {authError === 'AUTHORIZATION_FAILED' ? 'Auth Failed' : 'Not Registered'}
+                {authError === 'AUTHORIZATION_FAILED' ? 'Auth Failed' : authError === 'SERVER_ERROR' ? 'Server Error' : 'Not Registered'}
               </h2>
               <p className="text-slate-400 text-xs font-medium leading-relaxed mb-10">
                 {authError === 'AUTHORIZATION_FAILED' 
-                  ? 'The backend could not verify your Telegram session. Please ensure your BOT_TOKEN in .env is correct and restart the server.'
+                  ? 'The backend could not verify your Telegram session. Please ensure your BOT_TOKEN in .env is correct.'
+                  : authError === 'SERVER_ERROR'
+                  ? 'A technical error occurred on the server. This is often due to a database connection issue or a serialization error.'
                   : 'Your Telegram account is not found in our database. Please register using the bot first.'}
               </p>
               <a 
                 href="https://t.me/BrainStormUzBot"
                 className="btn-premium w-full py-5 text-sm font-black uppercase tracking-widest bg-rose-600 shadow-rose-600/40"
               >
-                {authError === 'AUTHORIZATION_FAILED' ? 'Try Again 🛰️' : 'Register via Bot 🛰️'}
+                {authError === 'AUTHORIZATION_FAILED' || authError === 'SERVER_ERROR' ? 'Try Again 🛰️' : 'Register via Bot 🛰️'}
               </a>
             </motion.div>
           </div>
