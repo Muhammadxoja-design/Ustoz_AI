@@ -34,14 +34,14 @@ WORKDIR /app
 ENV NODE_ENV=production
 RUN apk add --no-cache openssl
 
-# Copy package files
+# Copy package files and Prisma schema before install to satisfy postinstall scripts
 COPY package*.json ./
-
-# Install ONLY production dependencies, drastically reducing image size and attack surface
-RUN npm ci --only=production
-
-# Copy Prisma schema and regenerate client for the production runtime
 COPY prisma ./prisma/
+
+# Install ONLY production dependencies with flags to avoid failing dev scripts
+RUN npm ci --omit=dev --ignore-scripts
+
+# Explicitly generate Prisma client for the production runtime architecture
 RUN npx prisma generate
 
 # Copy the built Frontend static files (Assuming Vite outputs to /dist)
