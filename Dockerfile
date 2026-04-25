@@ -59,5 +59,5 @@ RUN mkdir -p server/uploads
 EXPOSE 3000
 
 # Start the Node.js application securely
-# Run migrations and start the Node.js application securely
-CMD npx prisma migrate deploy && npm start
+# Run database sync and start the Node.js application securely
+CMD npx prisma db push && npm start
