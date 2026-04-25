@@ -11,6 +11,78 @@ redis.on('error', (err) => {
 const BOT_TOKEN = process.env.BOT_TOKEN || '';
 
 // =============================================================================
+// PUBLIC ENDPOINT — No auth required
+// Returns the next/current active test info for WaitingRoom and Dashboard
+// =============================================================================
+router.get('/active-test', async (_req, res) => {
+  try {
+    const now = new Date();
+    
+    // First check for a currently active test
+    let test = await prisma.test.findFirst({
+      where: { startDate: { lte: now }, endDate: { gte: now } },
+      orderBy: { startDate: 'asc' },
+      select: { 
+        id: true, title: true, subject: true, description: true,
+        startDate: true, endDate: true, timeLimitMs: true,
+        _count: { select: { questions: true } }
+      }
+    });
+
+    if (test) {
+      return res.json({ status: 'active', test });
+    }
+
+    // Otherwise, find the next upcoming test
+    test = await prisma.test.findFirst({
+      where: { startDate: { gt: now } },
+      orderBy: { startDate: 'asc' },
+      select: { 
+        id: true, title: true, subject: true, description: true,
+        startDate: true, endDate: true, timeLimitMs: true,
+        _count: { select: { questions: true } }
+      }
+    });
+
+    if (test) {
+      return res.json({ status: 'upcoming', test });
+    }
+
+    // No tests found
+    res.json({ status: 'none', test: null });
+  } catch (error) {
+    console.error("Active test fetch error:", error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// =============================================================================
+// AUTH ENDPOINT — Check if user is registered and return profile
+// =============================================================================
+router.get('/me', async (req, res) => {
+  try {
+    const authUser = getTelegramUserFromToken(req);
+    if (!authUser) return res.status(401).json({ message: 'Unauthorized' });
+
+    const user = await prisma.user.findUnique({ 
+      where: { telegramId: authUser.telegramId },
+      include: {
+        _count: { select: { results: true } }
+      }
+    });
+    
+    if (!user) {
+      return res.json({ registered: false });
+    }
+
+    res.json({ registered: true, user });
+  } catch (error) {
+    console.error("Auth check error:", error);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// =============================================================================
 // PRODUCTION-GRADE Telegram initData Verification (HMAC-SHA256)
 // Prevents any non-Telegram client (Postman, curl, scripts) from accessing APIs.
 // =============================================================================
@@ -79,7 +151,7 @@ router.get('/questions', async (req, res) => {
 
     const questions = await prisma.question.findMany({
       where: { testId: activeTest.id },
-      select: { id: true, content: true, options: true }
+      select: { id: true, type: true, content: true, mediaUrl: true, options: true }
     });
 
     const timeLimitSecs = Math.floor(activeTest.timeLimitMs / 1000);
@@ -131,13 +203,42 @@ router.post('/submit', async (req, res) => {
     const questionIds = answers.map((a: any) => a.questionId);
     const dbQuestions = await prisma.question.findMany({
       where: { id: { in: questionIds }, testId: testId },
-      select: { id: true, correctOption: true, points: true }
+      select: { id: true, correctOption: true, points: true, type: true }
     });
 
     let score = 0;
+    const answerRecords: any[] = [];
+
     for (const answer of answers) {
       const q = dbQuestions.find(dbq => dbq.id === answer.questionId);
-      if (q && q.correctOption === answer.selectedOption) score += q.points;
+      if (q) {
+        let isCorrect: boolean | null = false;
+        let pointsAwarded = 0;
+        
+        // Auto-grade logic based on type
+        if (q.type === 'RADIO' || q.type === 'TRUE_FALSE') {
+          isCorrect = q.correctOption === answer.selectedOption;
+        } else if (q.type === 'TEXT' || q.type === 'RANGE') {
+          // Normalize text to ignore case and spaces
+          isCorrect = q.correctOption.trim().toLowerCase() === String(answer.selectedOption).trim().toLowerCase();
+        } else if (q.type === 'VOICE' || q.type === 'DRAWING') {
+          // Can't auto grade, or default to correct for participation?
+          // Let's set points to 0 for now and isCorrect to null (manual grading pending)
+          isCorrect = null;
+        }
+
+        if (isCorrect === true) {
+          pointsAwarded = q.points;
+          score += q.points;
+        }
+
+        answerRecords.push({
+          questionId: q.id,
+          value: String(answer.selectedOption),
+          isCorrect,
+          pointsAwarded
+        });
+      }
     }
 
     // Count any accrued tab-switch penalties for this session
@@ -147,9 +248,14 @@ router.post('/submit', async (req, res) => {
     const penaltyPts = penaltyLogs * 5; // 5 points deducted per violation
 
     await prisma.$transaction(async (tx) => {
-      await tx.result.create({
+      const result = await tx.result.create({
         data: { userId: user.id, testId, score, timeSpentMs: timeTakenMs, penaltyPts }
       });
+      if (answerRecords.length > 0) {
+        await tx.answer.createMany({
+          data: answerRecords.map(a => ({ ...a, resultId: result.id }))
+        });
+      }
     });
 
     res.json({ success: true, score, penaltyPts });

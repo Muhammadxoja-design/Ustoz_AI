@@ -2,7 +2,7 @@ import { Conversation } from "@grammyjs/conversations";
 import { InlineKeyboard, Keyboard } from "grammy";
 import { Gender } from "@prisma/client";
 import { prisma } from "../server/lib/prisma"; // Use the singleton
-import { MyContext } from "./bot";
+import { MyContext, mainMenuKeyboard } from "./bot";
 import { regions, districts } from "./data/locations";
 
 export type MyConversation = Conversation<MyContext>;
@@ -24,16 +24,12 @@ export async function registrationFlow(conversation: MyConversation, ctx: MyCont
     
     // Telegram WebApp buttons REQUIRE HTTPS.
     if (!webAppUrl.startsWith('https://')) {
-      await ctx.reply(`✅ You are already registered!\n\n⚠️ *Note*: Your WEBAPP_URL is not HTTPS. Telegram requires HTTPS for the "Launch" button to work.\n\nYour URL: ${webAppUrl}`, { parse_mode: "Markdown" });
-      return;
-    }
-
-    const launchKeyboard = new InlineKeyboard().webApp("Launch Test 🚀", webAppUrl);
-    await ctx.reply("✅ You are already registered! Click below to launch the App.", {
-      reply_markup: launchKeyboard,
+    await ctx.reply("✅ You are already registered! Use the menu below to explore.", {
+      reply_markup: mainMenuKeyboard,
     });
     return;
   }
+}
 
   // 1. Full Name
   await ctx.reply("Welcome! 🎓 Let's get you registered.\n\nPlease enter your *Full Name*:", {
@@ -194,15 +190,11 @@ export async function registrationFlow(conversation: MyConversation, ctx: MyCont
 
   const webAppUrl = `${process.env.WEBAPP_URL}?gender=${gender.toLowerCase()}`;
   
-  // Prepare result message (handle HTTPS requirement)
-  let finalMessage = "✅ Registration complete! Click the button below to launch the App.";
-  let finalKeyboard: InlineKeyboard | undefined;
-
-  if (webAppUrl.startsWith('https://')) {
-    finalKeyboard = new InlineKeyboard().webApp("Launch Test 🚀", webAppUrl);
-  } else {
-    finalMessage += `\n\n⚠️ *Note*: Your WEBAPP_URL is not HTTPS. Telegram requires HTTPS for the "Launch" button.\n\nURL: ${webAppUrl}`;
-  }
+    // Prepare result message (handle HTTPS requirement)
+    let finalMessage = "✅ <b>Registration complete!</b> Click the button below to launch the App.";
+    if (!webAppUrl.startsWith('https://')) {
+      finalMessage += `\n\n⚠️ <b>Note</b>: Your Web App URL is not HTTPS. Telegram requires HTTPS for the native "Launch" button.\n\n🔗 <b>Direct Link</b>:\n<code>${webAppUrl}</code>`;
+    }
 
   try {
     // conversation.external() ensures Prisma calls run correctly inside the grammY conversation engine
@@ -227,16 +219,29 @@ export async function registrationFlow(conversation: MyConversation, ctx: MyCont
       ctx.chat!.id,
       loadingMessage.message_id,
       finalMessage,
-      { reply_markup: finalKeyboard, parse_mode: "Markdown" }
+      { parse_mode: "HTML" }
     );
+    await ctx.reply("🎊 Profile initialized! Use the menu below to navigate.", {
+      reply_markup: mainMenuKeyboard
+    });
   } catch (error: any) {
     console.error("Prisma Error during registration:", error);
     if (error.code === "P2002") {
+      let duplicateMessage = "✅ You are already registered!";
+      let duplicateKeyboard: InlineKeyboard | undefined;
+
+      if (webAppUrl.startsWith('https://')) {
+        duplicateKeyboard = new InlineKeyboard().webApp("Launch Test 🚀", webAppUrl);
+        duplicateMessage += " Click the button below to launch the App.";
+      } else {
+        duplicateMessage += `\n\n⚠️ <b>Note</b>: Your Web App URL is not HTTPS.\n\n🔗 <b>Direct Link</b>:\n<code>${webAppUrl}</code>`;
+      }
+
       await ctx.api.editMessageText(
         ctx.chat!.id,
         loadingMessage.message_id,
-        "✅ You are already registered! Click the button below to launch the App.",
-        { reply_markup: launchKeyboard }
+        duplicateMessage,
+        { reply_markup: duplicateKeyboard, parse_mode: "HTML" }
       );
     } else {
       await ctx.api.editMessageText(

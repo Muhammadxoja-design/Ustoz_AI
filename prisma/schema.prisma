@@ -25,6 +25,15 @@ enum AuditLogType {
   ADMIN_ACTION
 }
 
+enum QuestionType {
+  RADIO
+  TRUE_FALSE
+  TEXT
+  RANGE
+  VOICE
+  DRAWING
+}
+
 model User {
   id          String     @id @default(uuid()) @db.Uuid
   telegramId  BigInt     @unique
@@ -73,17 +82,20 @@ model Test {
 }
 
 model Question {
-  id            String   @id @default(uuid()) @db.Uuid
-  testId        String   @db.Uuid
-  content       String   @db.Text
-  options       Json     // Array of standard { id: string, text: string } objects
-  correctOption String   // Option ID
-  points        Int      @default(1)
+  id            String       @id @default(uuid()) @db.Uuid
+  testId        String       @db.Uuid
+  type          QuestionType @default(RADIO)
+  content       String       @db.Text
+  mediaUrl      String?      @db.Text
+  options       Json         // Array of options, unused or optional for TEXT/VOICE/DRAWING
+  correctOption String       // Correct text/range/option ID
+  points        Int          @default(1)
 
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
   test          Test     @relation(fields: [testId], references: [id], onDelete: Cascade)
+  answers       Answer[]
 
   // Querying questions by their test
   @@index([testId])
@@ -107,6 +119,25 @@ model Result {
   // B-Tree will sort results by Test ID first, then Score (DESC), then Time (ASC)
   @@index([testId, score(sort: Desc), timeSpentMs(sort: Asc)])
   @@unique([userId, testId]) // Prevents multi-submissions
+  
+  answers     Answer[]
+}
+
+model Answer {
+  id            String   @id @default(uuid()) @db.Uuid
+  resultId      String   @db.Uuid
+  questionId    String   @db.Uuid
+  value         String   @db.Text // Can be option ID, text, or URL to voice/drawing
+  isCorrect     Boolean?
+  pointsAwarded Int?
+
+  createdAt     DateTime @default(now())
+
+  result        Result   @relation(fields: [resultId], references: [id], onDelete: Cascade)
+  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([resultId, questionId])
+  @@index([resultId])
 }
 
 model AuditLog {

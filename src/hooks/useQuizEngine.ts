@@ -8,7 +8,9 @@ export type QuestionOption = {
 
 export type Question = {
   id: string;
+  type: string;
   content: string;
+  mediaUrl: string | null;
   options: QuestionOption[];
 };
 
@@ -23,7 +25,8 @@ export function useQuizEngine() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [testId, setTestId] = useState<string | null>(null); // Must be persisted to send on submit
 
-  const [timeLeft, setTimeLeft] = useState(0);
+  const [timeLimit, setTimeLimit] = useState(0); // Static limit in seconds
+  const [startTime, setStartTime] = useState<number | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [score, setScore] = useState<number | null>(null);
@@ -32,6 +35,9 @@ export function useQuizEngine() {
   // Use a ref for answers inside the timer closure to avoid stale state bugs
   const answersRef = useRef<Answer[]>([]);
   answersRef.current = answers;
+
+  // Track whether auto-submit has been triggered to prevent double submissions
+  const autoSubmittedRef = useRef(false);
 
   // 1. Fetch Questions securely
   useEffect(() => {
@@ -48,7 +54,9 @@ export function useQuizEngine() {
 
         setTestId(data.testId);
         setQuestions(data.questions);
-        setTimeLeft(data.timeLimit || 300);
+        const limit = data.timeLimit || 300;
+        setTimeLimit(limit);
+        setStartTime(Date.now());
       } catch (err: any) {
         setError(err.message);
       } finally {
@@ -58,24 +66,14 @@ export function useQuizEngine() {
     fetchQuestions();
   }, []);
 
-  // 2. Strict Client-Side Timer — uses ref to safely auto-submit without stale closure
-  useEffect(() => {
-    if (isFetching || isSubmitting || score !== null || timeLeft <= 0) return;
+  // Removed internal timer state to stop Quiz.tsx from re-rendering every second.
+  // Timer is now managed by an external QuizTimer component.
 
-    const timer = setInterval(() => {
-      setTimeLeft((prev) => {
-        if (prev <= 1) {
-          clearInterval(timer);
-          // Use ref to access latest answers in this closure
-          submitQuiz(answersRef.current);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
-
-    return () => clearInterval(timer);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const handleTimeUp = useCallback(() => {
+    if (!isFetching && !isSubmitting && score === null && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      submitQuiz(answersRef.current);
+    }
   }, [isFetching, isSubmitting, score]);
 
   const selectOption = (optionId: string) => {
@@ -94,12 +92,13 @@ export function useQuizEngine() {
     if (currentIndex > 0) setCurrentIndex(prev => prev - 1);
   };
 
-  // 3. Submit — sends testId alongside answers
+  // 4. Submit — sends testId alongside answers
   const submitQuiz = useCallback(async (currentAnswers: Answer[] = answersRef.current) => {
     if (!testId) {
       setError("Quiz session invalid. Please restart.");
       return;
     }
+    if (isSubmitting) return; // Guard against double submission
     setIsSubmitting(true);
     try {
       const res = await fetch('/api/v1/quiz/submit', {
@@ -120,21 +119,24 @@ export function useQuizEngine() {
     } finally {
       setIsSubmitting(false);
     }
-  }, [testId]);
+  }, [testId, isSubmitting]);
 
   return {
     questions,
     currentIndex,
     currentQuestion: questions[currentIndex],
     answers,
-    timeLeft,
+    timeLimit,
+    startTime,
     isFetching,
     isSubmitting,
     score,
     error,
+    testId,
     selectOption,
     nextQuestion,
     prevQuestion,
-    submitQuiz
+    submitQuiz,
+    handleTimeUp
   };
 }
