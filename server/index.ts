@@ -8,6 +8,8 @@ import path from 'path';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
 import { dirname } from 'path';
+import { bot } from '../src/bot';
+import { webhookCallback } from 'grammy';
 import quizRoutes from './routes/quiz';
 import adminRoutes from './routes/admin';
 import uploadRoutes from './routes/upload';
@@ -25,6 +27,11 @@ app.use(express.json());
 app.use('/api/v1/quiz', quizRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/upload', uploadRoutes);
+
+// Telegram Bot Webhook (Production Only)
+if (process.env.NODE_ENV === 'production') {
+  app.use('/api/v1/bot', webhookCallback(bot, 'express'));
+}
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
@@ -58,13 +65,19 @@ const keepAlive = (url: string) => {
   }, 10 * 60 * 1000); // Every 10 minutes
 };
 
-app.listen(PORT, () => {
+app.listen(PORT, async () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   
-  // Start the Telegram Bot
-  import('../src/bot').catch(err => {
-    console.error('Failed to start Telegram Bot:', err);
-  });
+  // Set up Telegram Webhook in production
+  if (process.env.NODE_ENV === 'production' && process.env.RENDER_EXTERNAL_URL) {
+    try {
+      const webhookUrl = `${process.env.RENDER_EXTERNAL_URL}/api/v1/bot`;
+      await bot.api.setWebhook(webhookUrl);
+      console.log(`🤖 Telegram Webhook set to: ${webhookUrl}`);
+    } catch (err) {
+      console.error('Failed to set Telegram Webhook:', err);
+    }
+  }
 
   // Activate keep-alive if RENDER_EXTERNAL_URL is set
   if (process.env.RENDER_EXTERNAL_URL) {

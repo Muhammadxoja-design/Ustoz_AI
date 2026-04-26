@@ -22,8 +22,7 @@ if (!BOT_TOKEN) {
 }
 
 export type MyContext = Context & ConversationFlavor;
-
-const bot = new Bot<MyContext>(BOT_TOKEN);
+export const bot = new Bot<MyContext>(BOT_TOKEN);
 
 const redisInstance = new Redis(process.env.REDIS_URL || "redis://127.0.0.1:6379");
 redisInstance.on('error', (err) => {
@@ -183,8 +182,10 @@ bot.hears("🚀 Launch App", async (ctx) => {
   }
 });
 
-bot.start({
-  onStart: (botInfo) => {
-    console.log(`Bot @${botInfo.username} started successfully!`);
-  },
-});
+if (process.env.NODE_ENV !== "production") {
+  bot.start({
+    onStart: (botInfo) => {
+      console.log(`Bot @${botInfo.username} started successfully via Polling!`);
+    },
+  });
+}
