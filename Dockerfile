@@ -55,9 +55,9 @@ COPY public ./public
 # Create uploads directory
 RUN mkdir -p server/uploads
 
-# Expose internal port (Nginx will proxy external traffic to this)
-EXPOSE 3000
+# Expose internal port (Render defaults to 10000, but app will use PORT env var)
+EXPOSE 10000
 
-# Start the Node.js application securely
-# Run database sync and start the Node.js application securely
+# Start the Node.js application
+# Runs prisma db push to ensure schema is sync'd, then starts the server
 CMD npx prisma db push && npm start

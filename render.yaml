@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: ustoz-ai
+    env: docker
+    plan: free # Can be changed to 'starter' or higher
+    region: frankfurt # Or your preferred region
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: ustoz-db
+          property: connectionString
+      - key: REDIS_URL
+        fromService:
+          type: redis
+          name: ustoz-redis
+          property: connectionString
+      - key: BOT_TOKEN
+        sync: false # Set manually in Render dashboard
+      - key: WEBAPP_URL
+        sync: false # Set manually in Render dashboard (usually the URL of this service)
+      - key: RENDER_EXTERNAL_URL
+        fromContext: env
+        property: RENDER_EXTERNAL_URL
+
+databases:
+  - name: ustoz-db
+    plan: free
+
+redis:
+  - name: ustoz-redis
+    plan: free
+    ipAllowList: [] # Allow all internal traffic
